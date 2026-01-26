@@ -5,23 +5,11 @@ using UnityEngine;
 public class Door : MonoBehaviour
 {
     [SerializeField] private bool _isEntranceExit;
+    [SerializeField] private DoorSide _side;
 
-    private DoorSide _side;
+    private bool _isConnected;
 
-    public void Initialize(Vector3 moduleSize)
-    {
-        SetSide(moduleSize);
-    }
-
-    private void SetSide(Vector3 moduleSize)
-    {
-        float halfX = moduleSize.x * 0.5f;
-        float halfY = moduleSize.y * 0.5f;
-        Vector3 pos = transform.localPosition;
-
-        if (pos.x == halfX) _side = DoorSide.Right;
-        else if (pos.x == -halfX) _side = DoorSide.Left;
-        else if (pos.y == halfY) _side = DoorSide.Top;
-        else if (pos.y == -halfY) _side = DoorSide.Bottom;
-    }
+    public DoorSide Side => _side;
+    public bool IsEntranceExit => _isEntranceExit;
+    public bool IsConnected { get => _isConnected; set => _isConnected = value; }
 }

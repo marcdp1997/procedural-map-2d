@@ -1,17 +1,50 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(BoxCollider2D))]
 public class Module : MonoBehaviour
 {
-    private Door[] _doors;
-    private BoxCollider2D _collider;
+    [SerializeField] private BoxCollider2D _collider;
+    [SerializeField] private Door[] _doors;
 
-    private void Awake()
+    public Door[] Doors => _doors;
+    public BoxCollider2D Collider => _collider;
+
+    public List<Door> GetAvailableDoors(DoorSide doorToConnect)
     {
-        _doors = GetComponentsInChildren<Door>();
-        _collider = GetComponent<BoxCollider2D>();
+        List<Door> sideDoors = new();
+        DoorSide oppositeSide = GetOppositeSide(doorToConnect);
 
         foreach (Door door in _doors)
-            door.Initialize(_collider.bounds.size);
+        {
+            if (!door.IsEntranceExit && !door.IsConnected && door.Side == oppositeSide)
+                sideDoors.Add(door);
+        }
+
+        return sideDoors;
+    }
+
+    public List<Door> GetUnconnectedDoors()
+    {
+        List<Door> unconnectedDoors = new();
+
+        foreach (Door door in _doors)
+        {
+            if (!door.IsEntranceExit && !door.IsConnected)
+                unconnectedDoors.Add(door);
+        }
+
+        return unconnectedDoors;
+    }
+
+    private DoorSide GetOppositeSide(DoorSide side)
+    {
+        return side switch
+        {
+            DoorSide.Left => DoorSide.Right,
+            DoorSide.Right => DoorSide.Left,
+            DoorSide.Top => DoorSide.Bottom,
+            DoorSide.Bottom => DoorSide.Top,
+            _ => default
+        };
     }
 }

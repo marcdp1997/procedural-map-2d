@@ -45,6 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isEntranceExit: 0
+  _side: 2
 --- !u!1 &1036683137232010224
 GameObject:
   m_ObjectHideFlags: 0
@@ -90,6 +91,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isEntranceExit: 0
+  _side: 3
 --- !u!1 &1079639854765619428
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,6 +238,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 143afa962ca45e746b5f230f84f650b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _collider: {fileID: 8026488284953376883}
+  _doors:
+  - {fileID: 6115467056340798051}
+  - {fileID: 2756369514039859069}
+  - {fileID: 192265374253313416}
 --- !u!1 &1151146058882948644
 GameObject:
   m_ObjectHideFlags: 0
@@ -281,3 +288,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isEntranceExit: 0
+  _side: 0

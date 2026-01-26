@@ -144,6 +144,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 143afa962ca45e746b5f230f84f650b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _collider: {fileID: 9001890233154470399}
+  _doors:
+  - {fileID: 6115467056340798051}
 --- !u!1 &1151146058882948644
 GameObject:
   m_ObjectHideFlags: 0
@@ -189,3 +192,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _isEntranceExit: 0
+  _side: 3

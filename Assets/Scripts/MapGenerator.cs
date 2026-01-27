@@ -75,8 +75,10 @@ public class MapGenerator : MonoBehaviour
         Shuffle(moduleCandidates);
 
         foreach (Module prefab in moduleCandidates)
+        {
             if (IsModuleGoodCandidate(prefab, targetDoor, openDoorCount, isLastConnection))
                 break;
+        }
     }
 
     private bool IsModuleGoodCandidate(Module prefab, Door targetDoor, int openDoorCount, bool isLastConnection)
@@ -91,18 +93,13 @@ public class MapGenerator : MonoBehaviour
             if (!CanPlaceModule(prefab, position, openDoorCount, isLastConnection))
                 continue;
 
-            if (!AllModuleDoorsCanExpand(prefab, position, prefabDoor))
-                continue;
-
-            int doorIndex = prefab.Doors.IndexOf(prefabDoor);
-            Module newModule = CreateModule(prefab, position);
-            newModule.Doors[doorIndex].IsConnected = true;
+            CreateAndConnect(prefab, prefabDoor, position);
             targetDoor.IsConnected = true;
 
-            if (!DoesNotBlockExistingDoors())
+            if (!CanAllOpenDoorsExpand())
             {
-                _spawnedModules.Remove(newModule);
-                Destroy(newModule.gameObject);
+                RollbackModule();
+                targetDoor.IsConnected = false;
                 continue;
             }
 
@@ -112,30 +109,44 @@ public class MapGenerator : MonoBehaviour
         return false;
     }
 
-    private bool AllModuleDoorsCanExpand(Module prefab, Vector3 position, Door usedPrefabDoor)
+    private Module CreateAndConnect(Module prefab, Door prefabDoor, Vector3 position)
     {
-        foreach (Door door in prefab.Doors)
-        {
-            if (door == usedPrefabDoor)
-                continue;
-
-            Vector3 worldPos = position + door.transform.localPosition;
-
-            if (!CanDoorExpand(door, worldPos))
-                return false;
-        }
-
-        return true;
+        Module newModule = CreateModule(prefab, position);
+        int doorIndex = prefab.Doors.IndexOf(prefabDoor);
+        newModule.Doors[doorIndex].IsConnected = true;
+        return newModule;
     }
 
-    private bool DoesNotBlockExistingDoors()
+    private void RollbackModule()
     {
+        int index = _spawnedModules.Count - 1;
+        Module moduleToRemove = _spawnedModules[index];
+        _spawnedModules.RemoveAt(index);
+        Destroy(moduleToRemove.gameObject);
+    }
+
+    private bool CanAllOpenDoorsExpand()
+    {
+        Module lastModuleAdded = _spawnedModules[^1];
+        List<(Door, Door)> newCommunications = new();
+
         foreach (Door door in GetOpenDoors())
         {
             Vector3 worldPos = door.transform.position;
 
             if (!CanDoorExpand(door, worldPos))
-                return false;
+            {
+                Door sharedDoor = lastModuleAdded.Doors.Find(x => x != door && x.transform.position == worldPos);
+
+                if (sharedDoor != null) newCommunications.Add((door, sharedDoor));
+                else return false;
+            }
+        }
+
+        foreach ((Door a, Door b) in newCommunications)
+        {
+            a.IsConnected = true;
+            b.IsConnected = true;
         }
 
         return true;

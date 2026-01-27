@@ -31,10 +31,26 @@ public class MapGenerator : MonoBehaviour
         GenerateMap();
     }
 
-    private void GenerateMap()
+    public void GenerateMap()
     {
+        DestroyPreviousMap();
         CreateRandomStartModule();
         ExpandMapUntilLimit();
+
+        // If map fails, repeat
+        if (_spawnedModules.Count != _maxModules)
+            GenerateMap();
+    }
+
+    private void DestroyPreviousMap()
+    {
+        Module[] modules = _mapParent.GetComponentsInChildren<Module>();
+
+        foreach (Module module in modules)
+        {
+            Destroy(module.gameObject);
+            _spawnedModules.Clear();
+        }
     }
 
     private void CreateRandomStartModule()

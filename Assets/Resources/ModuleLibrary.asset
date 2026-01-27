@@ -12,13 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8e8992b2b4f508469c81ae601ddfadc, type: 3}
   m_Name: ModuleLibrary
   m_EditorClassIdentifier: 
-  StartEndModules:
-  - {fileID: 5745377656936064794, guid: fde0f1c50f94e114ab43d5b7fc4b95ea, type: 3}
-  - {fileID: 5745377656936064794, guid: 16593a5994176614395bb79b9024c030, type: 3}
-  - {fileID: 5745377656936064794, guid: 387155203368ef74fb33301bc89e8c77, type: 3}
-  - {fileID: 5745377656936064794, guid: 4ab2864b1179d8545ab20ff03f53a8cb, type: 3}
-  - {fileID: 5745377656936064794, guid: 17478a3e491fd8649aa72f0c4a07ff79, type: 3}
-  NormalModules:
+  Modules:
   - {fileID: 3547379932279202591, guid: bc37c2f6a8cbb1d47985601287cffcb7, type: 3}
   - {fileID: 3547379932279202591, guid: a0f70c63bf94d2447bc36106d1b21724, type: 3}
   - {fileID: 3336016042001996484, guid: bb0e8aaf9d92f534e9fce0fb65c1b93c, type: 3}
@@ -64,3 +58,8 @@ MonoBehaviour:
   - {fileID: 5745377656936064794, guid: 22a7faecc890b21489312bd2d27af31b, type: 3}
   - {fileID: 5745377656936064794, guid: 0e7ed649afde6074d87ce687954a55e1, type: 3}
   - {fileID: 5745377656936064794, guid: f317ba8d34e0f0c4b975fd712a9229ef, type: 3}
+  - {fileID: 5745377656936064794, guid: fde0f1c50f94e114ab43d5b7fc4b95ea, type: 3}
+  - {fileID: 5745377656936064794, guid: 16593a5994176614395bb79b9024c030, type: 3}
+  - {fileID: 5745377656936064794, guid: 387155203368ef74fb33301bc89e8c77, type: 3}
+  - {fileID: 5745377656936064794, guid: 4ab2864b1179d8545ab20ff03f53a8cb, type: 3}
+  - {fileID: 5745377656936064794, guid: 17478a3e491fd8649aa72f0c4a07ff79, type: 3}

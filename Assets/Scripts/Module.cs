@@ -4,9 +4,9 @@ using UnityEngine;
 public class Module : MonoBehaviour
 {
     [SerializeField] private BoxCollider2D _collider;
-    [SerializeField] private Door[] _doors;
+    [SerializeField] private List<Door> _doors;
 
-    public Door[] Doors => _doors;
+    public List<Door> Doors => _doors;
     public BoxCollider2D Collider => _collider;
 
     public List<Door> GetAvailableDoors(DoorSide doorToConnect)
@@ -34,6 +34,17 @@ public class Module : MonoBehaviour
         }
 
         return unconnectedDoors;
+    }
+
+    public bool HasEntranceExit()
+    {
+        foreach (Door door in _doors)
+        {
+            if (door.IsEntranceExit)
+                return true;
+        }
+
+        return false;
     }
 
     private DoorSide GetOppositeSide(DoorSide side)

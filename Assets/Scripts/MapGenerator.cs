@@ -33,14 +33,15 @@ public class MapGenerator : MonoBehaviour
 
     private void GenerateMap()
     {
-        CreateStartModule();
+        CreateRandomStartModule();
         ExpandMapUntilLimit();
     }
 
-    private void CreateStartModule()
+    private void CreateRandomStartModule()
     {
-        Module randomPrefab = _startEndPrefabs[Random.Range(0, _startEndPrefabs.Count)];
-        CreateModule(randomPrefab, _startPosition);
+        List<Module> candidates = new(_startEndPrefabs);
+        Shuffle(candidates);
+        CreateModule(candidates[0], _startPosition);
     }
 
     private Module CreateModule(Module prefab, Vector3 position)
@@ -55,23 +56,30 @@ public class MapGenerator : MonoBehaviour
         for (int i = 0; i < _maxModules; i++)
         {
             List<Door> openDoors = GetOpenDoors();
-            if (_spawnedModules.Count + openDoors.Count > _maxModules)
-                break;
 
             foreach (Door door in openDoors)
-                TryAttachModuleToDoor(door);
+            {
+                TryAttachModuleToDoor(door, openDoors.Count);
+            }
         }
     }
 
-    private void TryAttachModuleToDoor(Door targetDoor)
+    private void TryAttachModuleToDoor(Door targetDoor, int openDoorCount)
     {
-        bool isLastConnection = IsLastConnection(GetOpenDoors().Count);
+        bool isLastConnection = IsLastConnection(openDoorCount);
         List<Module> candidates = new(isLastConnection ? _startEndPrefabs : _normalPrefabs);
         Shuffle(candidates);
 
         foreach (Module prefab in candidates)
+        {
             if (TryPlaceModule(prefab, targetDoor, isLastConnection))
                 return;
+        }
+    }
+
+    private bool IsLastConnection(int numOpenDoors)
+    {
+        return _spawnedModules.Count == _maxModules - 1 && numOpenDoors == 1;
     }
 
     private bool TryPlaceModule(Module prefab, Door targetDoor, bool isLastConnection)
@@ -81,15 +89,17 @@ public class MapGenerator : MonoBehaviour
 
         foreach (Door prefabDoor in compatibleDoors)
         {
+            // Check if new module has physical space
             Vector3 position = targetDoor.transform.position - prefabDoor.transform.localPosition;
-
             if (!HasSpace(position, prefab.Collider.size))
                 continue;
 
+            // Create module
             Module newModule = CreateModule(prefab, position);
             List<(Door, Door)> connections = ConnectModule(newModule);
             List<Door> openDoors = GetOpenDoors();
 
+            // Rollback if module does not fit expectations
             if (ShouldRollback(openDoors, isLastConnection))
             {
                 RollbackModule(newModule, connections);
@@ -104,15 +114,15 @@ public class MapGenerator : MonoBehaviour
 
     private bool ShouldRollback(List<Door> openDoors, bool isLastConnection)
     {
-        if (!isLastConnection)
-        {
-            if (_spawnedModules.Count + openDoors.Count > _maxModules)
-                return true;
+        // Exceeds the modules limit
+        if (_spawnedModules.Count + openDoors.Count > _maxModules)
+            return true;
 
-            if (openDoors.Count == 0)
-                return true;
-        }
+        // Prevents the map from expanding
+        if (!isLastConnection && openDoors.Count == 0)
+            return true;
 
+        // Block other open doors
         return !CanAllOpenDoorsExpand(openDoors);
     }
 
@@ -123,7 +133,6 @@ public class MapGenerator : MonoBehaviour
         foreach (Door door in GetOpenDoors())
         {
             Vector3 worldPos = door.transform.position;
-
             Door sharedDoor = newModule.Doors.Find(x => x != door && x.transform.position == worldPos);
 
             if (sharedDoor != null)
@@ -151,36 +160,25 @@ public class MapGenerator : MonoBehaviour
 
     private bool CanAllOpenDoorsExpand(List<Door> openDoors)
     {
+        // Guarantee that at least all open doors can connect with a 1x1 module
         foreach (Door door in openDoors)
         {
-            Vector3 worldPos = door.transform.position;
+            Vector3 expansionDir = door.Side switch
+            {
+                DoorSide.Left => Vector3.left,
+                DoorSide.Right => Vector3.right,
+                DoorSide.Top => Vector3.up,
+                DoorSide.Bottom => Vector3.down,
+                _ => Vector3.zero
+            };
 
-            if (!CanDoorExpand(door, worldPos))
+            Vector2 candidatePos = door.transform.position + expansionDir * 0.5f;
+
+            if (!HasSpace(candidatePos, Vector2.one)) 
                 return false;
         }
 
         return true;
-    }
-
-    // At least guarantee 1x1 module expansion
-    private bool CanDoorExpand(Door door, Vector3 doorWorldPosition)
-    {
-        Vector3 expansionDir = door.Side switch
-        {
-            DoorSide.Left => Vector3.left,
-            DoorSide.Right => Vector3.right,
-            DoorSide.Top => Vector3.up,
-            DoorSide.Bottom => Vector3.down,
-            _ => Vector3.zero
-        };
-
-        Vector2 candidatePos = doorWorldPosition + expansionDir * 0.5f;
-        return HasSpace(candidatePos, Vector2.one);
-    }
-
-    private bool IsLastConnection(int numOpenDoors)
-    {
-        return _spawnedModules.Count == _maxModules - 1 && numOpenDoors == 1;
     }
 
     private bool HasSpace(Vector3 position, Vector3 size)
@@ -192,10 +190,8 @@ public class MapGenerator : MonoBehaviour
         };
 
         foreach (Module module in _spawnedModules)
-        {
             if (bounds.Intersects(module.Collider.bounds))
                 return false;
-        }
 
         return true;
     }
@@ -209,16 +205,13 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-
     private List<Door> GetOpenDoors()
     {
         List<Door> totalUnconnectedDoors = new();
 
         foreach (Module module in _spawnedModules)
-        {
             foreach (Door door in module.GetUnconnectedDoors())
                 totalUnconnectedDoors.Add(door);
-        }
 
         return totalUnconnectedDoors;
     }

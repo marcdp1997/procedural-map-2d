@@ -34,7 +34,7 @@ public class MapGenerator : MonoBehaviour
     private void GenerateMap()
     {
         CreateStartModule();
-        ExpandMap();
+        ExpandMapUntilLimit();
     }
 
     private void CreateStartModule()
@@ -50,7 +50,7 @@ public class MapGenerator : MonoBehaviour
         return newModule;
     }
 
-    private void ExpandMap()
+    private void ExpandMapUntilLimit()
     {
         int iterations = 0;
         while (iterations < _maxModules)
@@ -71,28 +71,90 @@ public class MapGenerator : MonoBehaviour
     {
         int openDoorCount = GetOpenDoors().Count;
         bool isLastConnection = IsLastConnection(openDoorCount);
-        List<Module> moduleChoices = new(isLastConnection ? _startEndPrefabs : _normalPrefabs);
-        Shuffle(moduleChoices);
+        List<Module> moduleCandidates = new(isLastConnection ? _startEndPrefabs : _normalPrefabs);
+        Shuffle(moduleCandidates);
 
-        foreach (Module prefab in moduleChoices)
+        foreach (Module prefab in moduleCandidates)
+            if (IsModuleGoodCandidate(prefab, targetDoor, openDoorCount, isLastConnection))
+                break;
+    }
+
+    private bool IsModuleGoodCandidate(Module prefab, Door targetDoor, int openDoorCount, bool isLastConnection)
+    {
+        List<Door> compatibleDoors = prefab.GetCompatibleDoors(targetDoor.Side);
+        Shuffle(compatibleDoors);
+
+        foreach (Door prefabDoor in compatibleDoors)
         {
-            List<Door> compatibleDoors = prefab.GetCompatibleDoors(targetDoor.Side);
-            Shuffle(compatibleDoors);
+            Vector3 position = targetDoor.transform.position - prefabDoor.transform.localPosition;
 
-            foreach (Door prefabDoor in compatibleDoors)
+            if (!CanPlaceModule(prefab, position, openDoorCount, isLastConnection))
+                continue;
+
+            if (!AllModuleDoorsCanExpand(prefab, position, prefabDoor))
+                continue;
+
+            int doorIndex = prefab.Doors.IndexOf(prefabDoor);
+            Module newModule = CreateModule(prefab, position);
+            newModule.Doors[doorIndex].IsConnected = true;
+            targetDoor.IsConnected = true;
+
+            if (!DoesNotBlockExistingDoors())
             {
-                int doorIndex = prefab.Doors.IndexOf(prefabDoor);
-                Vector3 position = targetDoor.transform.position - prefabDoor.transform.localPosition;
-                
-                if (CanPlaceModule(prefab, position, openDoorCount, isLastConnection))
-                {
-                    Module newModule = CreateModule(prefab, position);
-                    newModule.Doors[doorIndex].IsConnected = true;
-                    targetDoor.IsConnected = true;
-                    return;
-                }
+                _spawnedModules.Remove(newModule);
+                Destroy(newModule.gameObject);
+                continue;
             }
+
+            return true;
         }
+
+        return false;
+    }
+
+    private bool AllModuleDoorsCanExpand(Module prefab, Vector3 position, Door usedPrefabDoor)
+    {
+        foreach (Door door in prefab.Doors)
+        {
+            if (door == usedPrefabDoor)
+                continue;
+
+            Vector3 worldPos = position + door.transform.localPosition;
+
+            if (!CanDoorExpand(door, worldPos))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool DoesNotBlockExistingDoors()
+    {
+        foreach (Door door in GetOpenDoors())
+        {
+            Vector3 worldPos = door.transform.position;
+
+            if (!CanDoorExpand(door, worldPos))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool CanDoorExpand(Door door, Vector3 doorWorldPosition)
+    {
+        Vector3 expansionDir = door.Side switch
+        {
+            DoorSide.Left => Vector3.left,
+            DoorSide.Right => Vector3.right,
+            DoorSide.Top => Vector3.up,
+            DoorSide.Bottom => Vector3.down,
+            _ => Vector3.zero
+        };
+
+        Vector2 size = Vector2.one;
+        Vector2 candidatePos = doorWorldPosition + expansionDir * 0.5f;
+        return HasSpace(candidatePos, size * 0.05f);
     }
 
     private bool IsLastConnection(int numUnconnectedDoors)

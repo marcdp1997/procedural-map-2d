@@ -2,9 +2,9 @@ using UnityEngine;
 
 public class Camera2DController : MonoBehaviour
 {
-    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float _moveSpeed = 5f;
 
-    void Update()
+    private void Update()
     {
         Vector3 move = Vector3.zero;
 
@@ -13,6 +13,6 @@ public class Camera2DController : MonoBehaviour
         if (Input.GetKey(KeyCode.A)) move.x -= 1f;
         if (Input.GetKey(KeyCode.D)) move.x += 1f;
 
-        transform.position += moveSpeed * Time.deltaTime * move;
+        transform.position += _moveSpeed * Time.deltaTime * move;
     }
 }

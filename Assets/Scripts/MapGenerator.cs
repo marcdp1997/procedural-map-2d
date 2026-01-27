@@ -1,24 +1,49 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+[ExecuteInEditMode]
 public class MapGenerator : MonoBehaviour
 {
-    [SerializeField] private int _maxModules = 15;
     [SerializeField] private ModuleLibrary _moduleLibrary;
-    [SerializeField] private Vector3 _startPosition;
-    [SerializeField] private Transform _mapParent;
+    [SerializeField] private int _maxModules = 15;
+    [SerializeField] private bool _useRandomSeed = true;
+    [SerializeField] private int _seed;
+    [SerializeField] private int _currentSeed;
+    [SerializeField] private int _iterationCount;
 
     private readonly List<Module> _spawnedModules = new();
     private readonly List<Module> _startEndPrefabs = new();
     private readonly List<Module> _normalPrefabs = new();
 
-    private void Awake()
+    public void GenerateMap()
     {
+        if (_maxModules == 0) return;
+
+        _iterationCount = 0;
         CacheModulePrefabs();
+        GenerateSeed();
+
+        do
+        {
+            DestroyPreviousMap();
+            CreateRandomStartModule();
+            ExpandMapUntilLimit();
+            _iterationCount++;
+        }
+        while (_spawnedModules.Count != _maxModules);
+    }
+
+    private void GenerateSeed()
+    {
+        _currentSeed = _useRandomSeed ? Random.Range(int.MinValue, int.MaxValue) : _seed;
+        Random.InitState(_currentSeed);
     }
 
     private void CacheModulePrefabs()
     {
+        _startEndPrefabs.Clear();
+        _normalPrefabs.Clear();
+
         foreach (Module module in _moduleLibrary.Modules)
         {
             if (module.HasEntranceExit()) _startEndPrefabs.Add(module);
@@ -26,43 +51,25 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    private void Start()
-    {
-        GenerateMap();
-    }
-
-    public void GenerateMap()
-    {
-        DestroyPreviousMap();
-        CreateRandomStartModule();
-        ExpandMapUntilLimit();
-
-        // If map fails, repeat
-        if (_spawnedModules.Count != _maxModules)
-            GenerateMap();
-    }
-
     private void DestroyPreviousMap()
     {
-        Module[] modules = _mapParent.GetComponentsInChildren<Module>();
-
+        Module[] modules = GetComponentsInChildren<Module>();
         foreach (Module module in modules)
-        {
-            Destroy(module.gameObject);
-            _spawnedModules.Clear();
-        }
+                DestroyImmediate(module.gameObject);
+
+        _spawnedModules.Clear();
     }
 
     private void CreateRandomStartModule()
     {
         List<Module> candidates = new(_startEndPrefabs);
         Shuffle(candidates);
-        CreateModule(candidates[0], _startPosition);
+        CreateModule(candidates[0], Vector3.zero);
     }
 
     private Module CreateModule(Module prefab, Vector3 position)
     {
-        Module newModule = Instantiate(prefab, position, Quaternion.identity, _mapParent);
+        Module newModule = Instantiate(prefab, position, Quaternion.identity, transform);
         _spawnedModules.Add(newModule);
         return newModule;
     }
@@ -74,9 +81,7 @@ public class MapGenerator : MonoBehaviour
             List<Door> openDoors = GetOpenDoors();
 
             foreach (Door door in openDoors)
-            {
                 TryAttachModuleToDoor(door, openDoors.Count);
-            }
         }
     }
 
@@ -87,10 +92,8 @@ public class MapGenerator : MonoBehaviour
         Shuffle(candidates);
 
         foreach (Module prefab in candidates)
-        {
             if (TryPlaceModule(prefab, targetDoor, isLastConnection))
-                return;
-        }
+                break;
     }
 
     private bool IsLastConnection(int numOpenDoors)
@@ -113,10 +116,9 @@ public class MapGenerator : MonoBehaviour
             // Create module
             Module newModule = CreateModule(prefab, position);
             List<(Door, Door)> connections = ConnectModule(newModule);
-            List<Door> openDoors = GetOpenDoors();
 
             // Rollback if module does not fit expectations
-            if (ShouldRollback(openDoors, isLastConnection))
+            if (ShouldRollback(isLastConnection))
             {
                 RollbackModule(newModule, connections);
                 continue;
@@ -128,8 +130,10 @@ public class MapGenerator : MonoBehaviour
         return false;
     }
 
-    private bool ShouldRollback(List<Door> openDoors, bool isLastConnection)
+    private bool ShouldRollback(bool isLastConnection)
     {
+        List<Door> openDoors = GetOpenDoors();
+
         // Exceeds the modules limit
         if (_spawnedModules.Count + openDoors.Count > _maxModules)
             return true;
@@ -171,12 +175,12 @@ public class MapGenerator : MonoBehaviour
         }
 
         _spawnedModules.Remove(module);
-        Destroy(module.gameObject);
+        DestroyImmediate(module.gameObject);
     }
 
     private bool CanAllOpenDoorsExpand(List<Door> openDoors)
     {
-        // Guarantee that at least all open doors can connect with a 1x1 module
+        // Guarantee at least that all open doors can connect with a 1x1 module
         foreach (Door door in openDoors)
         {
             Vector3 expansionDir = door.Side switch

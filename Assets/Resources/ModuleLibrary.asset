@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8e8992b2b4f508469c81ae601ddfadc, type: 3}
   m_Name: ModuleLibrary
   m_EditorClassIdentifier: 
+  MaxModules: 30
   Modules:
   - {fileID: 3547379932279202591, guid: bc37c2f6a8cbb1d47985601287cffcb7, type: 3}
   - {fileID: 3547379932279202591, guid: a0f70c63bf94d2447bc36106d1b21724, type: 3}

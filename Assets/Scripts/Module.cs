@@ -9,10 +9,10 @@ public class Module : MonoBehaviour
     public List<Door> Doors => _doors;
     public BoxCollider2D Collider => _collider;
 
-    public List<Door> GetAvailableDoors(DoorSide doorToConnect)
+    public List<Door> GetCompatibleDoors(DoorSide targetDoor)
     {
         List<Door> sideDoors = new();
-        DoorSide oppositeSide = GetOppositeSide(doorToConnect);
+        DoorSide oppositeSide = GetOppositeSide(targetDoor);
 
         foreach (Door door in _doors)
         {

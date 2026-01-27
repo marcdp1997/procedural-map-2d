@@ -35,7 +35,6 @@ public class MapGenerator : MonoBehaviour
     {
         CreateStartModule();
         ExpandMap();
-        // Add end module
     }
 
     private void CreateStartModule()
@@ -44,74 +43,81 @@ public class MapGenerator : MonoBehaviour
         CreateModule(randomPrefab, _startPosition);
     }
 
+    private Module CreateModule(Module prefab, Vector3 position)
+    {
+        Module newModule = Instantiate(prefab, position, Quaternion.identity, _mapParent);
+        _spawnedModules.Add(newModule);
+        return newModule;
+    }
+
     private void ExpandMap()
     {
         int iterations = 0;
         while (iterations < _maxModules)
         {
-            List<Door> unconnectedDoors = GetMapUnconnectedDoors();
-            int totalModules = _spawnedModules.Count + unconnectedDoors.Count;
+            List<Door> openDoors = GetOpenDoors();
+            int totalModules = _spawnedModules.Count + openDoors.Count;
 
             if (totalModules > _maxModules) break;
 
-            foreach (var door in unconnectedDoors)
-                TryConnectDoorWithModule(door);
+            foreach (Door door in openDoors)
+                TryAttachModuleToDoor(door);
 
             iterations++;
         }
     }
 
-    private void TryConnectDoorWithModule(Door doorToConnect)
+    private void TryAttachModuleToDoor(Door targetDoor)
     {
-        int numMapUnconnectedDoors = GetMapUnconnectedDoors().Count;
-        bool isEndModule = IsEndModule(numMapUnconnectedDoors);
-        List<Module> moduleChoices = new(isEndModule ? _startEndPrefabs : _normalPrefabs);
+        int openDoorCount = GetOpenDoors().Count;
+        bool isLastConnection = IsLastConnection(openDoorCount);
+        List<Module> moduleChoices = new(isLastConnection ? _startEndPrefabs : _normalPrefabs);
         Shuffle(moduleChoices);
 
         foreach (Module prefab in moduleChoices)
         {
-            List<Door> doorChoices = prefab.GetAvailableDoors(doorToConnect.Side);
-            Shuffle(doorChoices);
+            List<Door> compatibleDoors = prefab.GetCompatibleDoors(targetDoor.Side);
+            Shuffle(compatibleDoors);
 
-            foreach (Door door in doorChoices)
+            foreach (Door prefabDoor in compatibleDoors)
             {
-                Vector3 position = doorToConnect.transform.position - door.transform.localPosition;
+                int doorIndex = prefab.Doors.IndexOf(prefabDoor);
+                Vector3 position = targetDoor.transform.position - prefabDoor.transform.localPosition;
                 
-                if (!WillExceedMaxModules(prefab.Doors.Count, numMapUnconnectedDoors, isEndModule) && 
-                    !WillPreventMapFromExpanding(prefab.Doors.Count, numMapUnconnectedDoors, isEndModule) &&
-                    HasSpace(position, prefab.Collider.size - Vector2.one * 0.05f))
+                if (CanPlaceModule(prefab, position, openDoorCount, isLastConnection))
                 {
                     Module newModule = CreateModule(prefab, position);
-                    newModule.Doors.Find(x => x.name == door.name).IsConnected = true;
-                    doorToConnect.IsConnected = true;
+                    newModule.Doors[doorIndex].IsConnected = true;
+                    targetDoor.IsConnected = true;
                     return;
                 }
             }
         }
     }
 
-    private bool IsEndModule(int numUnconnectedDoors)
+    private bool IsLastConnection(int numUnconnectedDoors)
     {
         return _spawnedModules.Count == _maxModules - 1 && numUnconnectedDoors == 1;
     }
 
-    private bool WillExceedMaxModules(int numModuleDoors, int numUnconnectedDoors, bool isEndModule)
+    private bool CanPlaceModule(Module prefab, Vector3 position, int openDoorCount, bool isLastConnection)
     {
-        return _spawnedModules.Count + numUnconnectedDoors + numModuleDoors - (isEndModule ? 2 : 1) > _maxModules;
+        int moduleDoorCount = prefab.GetUnconnectedDoors().Count;
+        bool exceedsLimit = WillExceedModuleLimit(moduleDoorCount, openDoorCount);
+        bool blockExpansion = WillBlockFurtherExpansion(moduleDoorCount, openDoorCount) && !isLastConnection;
+        bool hasSpace = HasSpace(position, prefab.Collider.size - Vector2.one * 0.05f);
+
+        return !exceedsLimit && !blockExpansion && hasSpace;
     }
 
-    private bool WillPreventMapFromExpanding(int numModuleDoors, int numUnconnectedDoors, bool isEndModule)
+    private bool WillExceedModuleLimit(int moduleDoorCount, int openDoorCount)
     {
-        return _spawnedModules.Count + numUnconnectedDoors + numModuleDoors - 1 < _maxModules &&
-            numModuleDoors == 1 &&
-            !isEndModule;
+        return _spawnedModules.Count + openDoorCount + moduleDoorCount - 1 > _maxModules;
     }
 
-    private Module CreateModule(Module prefab, Vector3 position)
+    private bool WillBlockFurtherExpansion(int moduleDoorCount, int openDoorCount)
     {
-        Module newModule = Instantiate(prefab, position, Quaternion.identity, _mapParent);
-        _spawnedModules.Add(newModule);
-        return newModule;
+        return _spawnedModules.Count + openDoorCount + moduleDoorCount - 1 < _maxModules && moduleDoorCount == 1;
     }
 
     private bool HasSpace(Vector3 position, Vector3 size)
@@ -141,7 +147,7 @@ public class MapGenerator : MonoBehaviour
     }
 
 
-    private List<Door> GetMapUnconnectedDoors()
+    private List<Door> GetOpenDoors()
     {
         List<Door> totalUnconnectedDoors = new();
 

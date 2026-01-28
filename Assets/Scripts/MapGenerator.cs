@@ -11,33 +11,35 @@ public class MapGenerator : MonoBehaviour
     [SerializeField] private bool _useRandomSeed = true;
     [SerializeField] private int _seed;
     [SerializeField] private int _currentSeed;
+    [SerializeField] private int _attemptCount;
     [SerializeField] private int _iterationCount;
 
     private readonly List<Module> _spawnedModules = new();
     private readonly List<Module> _startEndPrefabs = new();
     private readonly List<Module> _normalPrefabs = new();
 
-    public void GenerateMap()
+    public void StartMapGeneration()
     {
         if (_maxModules == 0) return;
 
-        _iterationCount = 0;
+        _attemptCount = 0;
         CacheModulePrefabs();
         GenerateSeed();
 
-        do {
-            DestroyCurrentMap();
-            CreateRandomStartModule();
-            ExpandMapUntilLimit();
-            _iterationCount++;
-        }
-        while (_spawnedModules.Count != _maxModules && _iterationCount < MaxAttempts);
-
-        if (_iterationCount == MaxAttempts)
+        while (_attemptCount < MaxAttempts)
         {
-            DestroyCurrentMap();
-            Debug.LogWarning("Map generation failed. Max attempts used.");
+            _attemptCount++;
+            Debug.Log($"Generating map with seed {_currentSeed}. Attempt number {_attemptCount}.");
+            GenerateMap();
+
+            if (_spawnedModules.Count == _maxModules)
+            {
+                Debug.Log($"Map generation succeed!");
+                return;
+            }
         }
+
+        Debug.Log($"Map generation failed.");
     }
 
     private void GenerateSeed()
@@ -81,14 +83,22 @@ public class MapGenerator : MonoBehaviour
         return newModule;
     }
 
-    private void ExpandMapUntilLimit()
+    private void GenerateMap()
     {
-        for (int i = 0; i < _maxModules; i++)
+        _iterationCount = 0;
+        DestroyCurrentMap();
+        CreateRandomStartModule();
+
+        List<Door> openDoors = GetOpenDoors();
+
+        while (_iterationCount < _maxModules && openDoors.Count > 0)
         {
-            List<Door> openDoors = GetOpenDoors();
+            _iterationCount++;
 
             foreach (Door door in openDoors)
                 TryAttachModuleToDoor(door, openDoors.Count);
+
+            openDoors = GetOpenDoors();
         }
     }
 

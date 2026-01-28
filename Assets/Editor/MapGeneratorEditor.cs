@@ -9,6 +9,7 @@ public class MapGeneratorEditor : Editor
     private SerializedProperty _useRandomSeed;
     private SerializedProperty _seed;
     private SerializedProperty _currentSeed;
+    private SerializedProperty _attemptCount;
     private SerializedProperty _iterationCount;
 
     private void OnEnable()
@@ -18,6 +19,7 @@ public class MapGeneratorEditor : Editor
         _useRandomSeed = serializedObject.FindProperty("_useRandomSeed");
         _seed = serializedObject.FindProperty("_seed");
         _currentSeed = serializedObject.FindProperty("_currentSeed");
+        _attemptCount = serializedObject.FindProperty("_attemptCount");
         _iterationCount = serializedObject.FindProperty("_iterationCount");
     }
 
@@ -36,13 +38,14 @@ public class MapGeneratorEditor : Editor
 
         EditorGUILayout.PropertyField(_currentSeed);
         GUI.enabled = false;
+        EditorGUILayout.PropertyField(_attemptCount);
         EditorGUILayout.PropertyField(_iterationCount);
         GUI.enabled = true;
 
         GUILayout.Space(10);
 
         if (GUILayout.Button("Generate Map"))
-            ((MapGenerator)target).GenerateMap();
+            ((MapGenerator)target).StartMapGeneration();
 
         serializedObject.ApplyModifiedProperties();
     }

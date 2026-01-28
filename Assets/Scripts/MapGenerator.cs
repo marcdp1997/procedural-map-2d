@@ -4,6 +4,8 @@ using UnityEngine;
 [ExecuteInEditMode]
 public class MapGenerator : MonoBehaviour
 {
+    private const int MaxAttempts = 5;
+
     [SerializeField] private ModuleLibrary _moduleLibrary;
     [SerializeField] private int _maxModules = 15;
     [SerializeField] private bool _useRandomSeed = true;
@@ -23,14 +25,19 @@ public class MapGenerator : MonoBehaviour
         CacheModulePrefabs();
         GenerateSeed();
 
-        do
-        {
-            DestroyPreviousMap();
+        do {
+            DestroyCurrentMap();
             CreateRandomStartModule();
             ExpandMapUntilLimit();
             _iterationCount++;
         }
-        while (_spawnedModules.Count != _maxModules);
+        while (_spawnedModules.Count != _maxModules && _iterationCount < MaxAttempts);
+
+        if (_iterationCount == MaxAttempts)
+        {
+            DestroyCurrentMap();
+            Debug.LogWarning("Map generation failed. Max attempts used.");
+        }
     }
 
     private void GenerateSeed()
@@ -51,7 +58,7 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    private void DestroyPreviousMap()
+    private void DestroyCurrentMap()
     {
         Module[] modules = GetComponentsInChildren<Module>();
         foreach (Module module in modules)
@@ -113,7 +120,7 @@ public class MapGenerator : MonoBehaviour
             if (!HasSpace(position, prefab.Collider.size))
                 continue;
 
-            // Create module
+            // Create module and connections
             Module newModule = CreateModule(prefab, position);
             List<(Door, Door)> connections = ConnectModule(newModule);
 
@@ -150,16 +157,17 @@ public class MapGenerator : MonoBehaviour
     {
         List<(Door, Door)> newConnections = new();
 
-        foreach (Door door in GetOpenDoors())
+        foreach (Door openDoor in GetOpenDoors())
         {
-            Vector3 worldPos = door.transform.position;
-            Door sharedDoor = newModule.Doors.Find(x => x != door && x.transform.position == worldPos);
-
-            if (sharedDoor != null)
+            foreach (Door moduleDoor in newModule.Doors)
             {
-                sharedDoor.IsConnected = true;
-                door.IsConnected = true;
-                newConnections.Add((sharedDoor, door));
+                if (moduleDoor != openDoor && 
+                    moduleDoor.transform.position == openDoor.transform.position)
+                {
+                    moduleDoor.IsConnected = true;
+                    openDoor.IsConnected = true;
+                    newConnections.Add((moduleDoor, openDoor));
+                }
             }
         }
 

@@ -7,7 +7,7 @@ public class MapGenerator : MonoBehaviour
     private const int MaxAttempts = 5;
 
     [SerializeField] private ModuleLibrary _moduleLibrary;
-    [SerializeField] private int _maxModules = 15;
+    [SerializeField] [Min(2)] private int _maxModules = 15;
     [SerializeField] private bool _useRandomSeed = true;
     [SerializeField] private int _seed;
     [SerializeField] private int _currentSeed;
@@ -20,10 +20,28 @@ public class MapGenerator : MonoBehaviour
 
     public void StartMapGeneration()
     {
-        if (_maxModules == 0) return;
-
         _attemptCount = 0;
+
+        if (_moduleLibrary == null)
+        {
+            Debug.LogWarning("Can't create map. Please assign a valid Module Library.");
+            return;
+        }
+
         CacheModulePrefabs();
+
+        if (_startEndPrefabs.Count == 0)
+        {
+            Debug.LogWarning("Can't create map. Please add modules with an entrance/exit in the assigned Module Library.");
+            return;
+        }
+
+        if (_normalPrefabs.Count == 0)
+        {
+            Debug.LogWarning("Can't create map. Please add modules without an entrance/exit in the assigned Module Library.");
+            return;
+        }
+
         GenerateSeed();
 
         while (_attemptCount < MaxAttempts)

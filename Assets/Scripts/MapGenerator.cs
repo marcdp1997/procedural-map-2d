@@ -76,7 +76,7 @@ public class MapGenerator : MonoBehaviour
 
     private Module CreateModule(Module prefab, Vector3 position)
     {
-        Module newModule = Instantiate(prefab, position, Quaternion.identity, transform);
+        Module newModule = Instantiate(prefab, position, prefab.transform.rotation, transform);
         _spawnedModules.Add(newModule);
         return newModule;
     }

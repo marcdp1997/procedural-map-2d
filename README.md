@@ -63,6 +63,9 @@ Desde el componente **MapGenerator**:
    - Si el candidato no cumple alguno de estos requisitos, se elige otro candidato.
 4. Se repite el paso 2 hasta alcanzar el numero máximo de módulos.
 
+## Limitaciones
+Si la librería de módulos no contiene módulos de cierre (aquellos con solo una entrada) el algoritmo suele fallar con frecuencia.
+
 ## Uso de IA
 
 Se ha utilizado **IA (ChatGPT)** como apoyo para:

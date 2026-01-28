@@ -51,7 +51,7 @@ Desde el componente **MapGenerator**:
 ## Flujo general del algoritmo
 
 1. Se instancia un módulo inicial (Entrada).
-2. Se conectan las puertas no conectadas con nuevos modulos.
+2. Se conectan las puertas no conectadas con nuevos módulos.
 3. Para cada puerta:
    - Se buscan módulos candidatos que tengan puertas compatibles con la orientación de la puerta no conectada.
    - Se elige un candidato al azar.

@@ -17,6 +17,8 @@ public class MapGenerator : MonoBehaviour
     private readonly List<Module> _spawnedModules = new();
     private readonly List<Module> _startEndPrefabs = new();
     private readonly List<Module> _normalPrefabs = new();
+    private readonly List<Door> _openDoors = new();
+    private readonly List<Door> _moduleConnections = new();
 
     public void StartMapGeneration()
     {
@@ -84,6 +86,7 @@ public class MapGenerator : MonoBehaviour
         foreach (Module module in modules)
                 DestroyImmediate(module.gameObject);
 
+        _openDoors.Clear();
         _spawnedModules.Clear();
     }
 
@@ -97,6 +100,7 @@ public class MapGenerator : MonoBehaviour
     private Module CreateModule(Module prefab, Vector3 position)
     {
         Module newModule = Instantiate(prefab, position, prefab.transform.rotation, transform);
+        ConnectModule(newModule);
         _spawnedModules.Add(newModule);
         return newModule;
     }
@@ -107,22 +111,18 @@ public class MapGenerator : MonoBehaviour
         DestroyCurrentMap();
         CreateRandomStartModule();
 
-        List<Door> openDoors = GetOpenDoors();
-
-        while (_iterationCount < _maxModules && openDoors.Count > 0)
+        while (_iterationCount < _maxModules && _openDoors.Count > 0)
         {
             _iterationCount++;
 
-            foreach (Door door in openDoors)
-                TryAttachModuleToDoor(door, openDoors.Count);
-
-            openDoors = GetOpenDoors();
+            for (int i = 0; i < _openDoors.Count; i++)
+                TryAttachModuleToDoor(_openDoors[i]);
         }
     }
 
-    private void TryAttachModuleToDoor(Door targetDoor, int openDoorCount)
+    private void TryAttachModuleToDoor(Door targetDoor)
     {
-        bool isLastConnection = IsLastConnection(openDoorCount);
+        bool isLastConnection = IsLastConnection();
         List<Module> candidates = new(isLastConnection ? _startEndPrefabs : _normalPrefabs);
         Shuffle(candidates);
 
@@ -131,9 +131,9 @@ public class MapGenerator : MonoBehaviour
                 break;
     }
 
-    private bool IsLastConnection(int numOpenDoors)
+    private bool IsLastConnection()
     {
-        return _spawnedModules.Count == _maxModules - 1 && numOpenDoors == 1;
+        return _spawnedModules.Count == _maxModules - 1 && _openDoors.Count == 1;
     }
 
     private bool TryPlaceModule(Module prefab, Door targetDoor, bool isLastConnection)
@@ -145,17 +145,16 @@ public class MapGenerator : MonoBehaviour
         {
             // Check if new module has physical space
             Vector3 position = targetDoor.transform.position - prefabDoor.transform.localPosition;
-            if (!HasSpace(position, prefab.Collider.size))
-                continue;
+            Vector2 size = prefab.Collider.size;
+            if (!HasSpace(position, size)) continue;
 
             // Create module and connections
             Module newModule = CreateModule(prefab, position);
-            List<(Door, Door)> connections = ConnectModule(newModule);
 
             // Rollback if module does not fit expectations
             if (ShouldRollback(isLastConnection))
             {
-                RollbackModule(newModule, connections);
+                RollbackModule(newModule);
                 continue;
             }
 
@@ -167,57 +166,72 @@ public class MapGenerator : MonoBehaviour
 
     private bool ShouldRollback(bool isLastConnection)
     {
-        List<Door> openDoors = GetOpenDoors();
-
         // Exceeds the modules limit
-        if (_spawnedModules.Count + openDoors.Count > _maxModules)
+        if (_spawnedModules.Count + _openDoors.Count > _maxModules)
             return true;
 
         // Prevents the map from expanding
-        if (!isLastConnection && openDoors.Count == 0)
+        if (!isLastConnection && _openDoors.Count == 0)
             return true;
 
         // Block other open doors
-        return !CanAllOpenDoorsExpand(openDoors);
+        return !CanAllOpenDoorsExpand();
     }
 
-    private List<(Door, Door)> ConnectModule(Module newModule)
+    private void ConnectModule(Module newModule)
     {
-        List<(Door, Door)> newConnections = new();
+        _moduleConnections.Clear();
 
-        foreach (Door openDoor in GetOpenDoors())
+        foreach (Door moduleDoor in newModule.Doors)
         {
-            foreach (Door moduleDoor in newModule.Doors)
+            if (moduleDoor.IsEntranceExit) continue;
+
+            Door matchedOpenDoor = null;
+
+            foreach (Door otherDoor in _openDoors)
             {
-                if (moduleDoor != openDoor && 
-                    moduleDoor.transform.position == openDoor.transform.position)
+                if (moduleDoor != otherDoor && 
+                   (moduleDoor.transform.position - otherDoor.transform.position).sqrMagnitude < 0.01f)
                 {
-                    moduleDoor.IsConnected = true;
-                    openDoor.IsConnected = true;
-                    newConnections.Add((moduleDoor, openDoor));
+                    matchedOpenDoor = otherDoor;
+                    break;
                 }
             }
-        }
 
-        return newConnections;
+            if (matchedOpenDoor != null)
+            {
+                moduleDoor.IsConnected = true;
+                matchedOpenDoor.IsConnected = true;
+                _openDoors.Remove(matchedOpenDoor);
+                _moduleConnections.Add(matchedOpenDoor);
+            }
+            else _openDoors.Add(moduleDoor);
+        }
     }
 
-    private void RollbackModule(Module module, List<(Door, Door)> connections)
+    private void RollbackModule(Module module)
     {
-        foreach ((Door a, Door b) in connections)
+        // Remove from open doors the module doors that aren't connected
+        foreach (Door moduleDoor in module.Doors)
+            if (!moduleDoor.IsEntranceExit && !moduleDoor.IsConnected)
+                _openDoors.Remove(moduleDoor);
+
+        // Add back to open doors the modules that are connected to this module
+        foreach (Door otherDoor in _moduleConnections)
         {
-            a.IsConnected = false;
-            b.IsConnected = false;
+            otherDoor.IsConnected = false;
+            _openDoors.Add(otherDoor);
         }
 
+        // Remove module
         _spawnedModules.Remove(module);
         DestroyImmediate(module.gameObject);
     }
 
-    private bool CanAllOpenDoorsExpand(List<Door> openDoors)
+    private bool CanAllOpenDoorsExpand()
     {
-        // Guarantee at least that all open doors can connect with a 1x1 module
-        foreach (Door door in openDoors)
+        // Guarantee at least that all open doors have enough space to connect with a 1x1 module
+        foreach (Door door in _openDoors)
         {
             Vector3 expansionDir = door.Side switch
             {
@@ -237,17 +251,24 @@ public class MapGenerator : MonoBehaviour
         return true;
     }
 
-    private bool HasSpace(Vector3 position, Vector3 size)
+    private bool HasSpace(Vector3 position, Vector2 size)
     {
-        Bounds bounds = new()
+        foreach (Module spawnedModule in _spawnedModules)
         {
-            center = position,
-            size = size * 0.95f
-        };
+            Vector2 otherPos = spawnedModule.transform.position;
+            Vector2 otherSize = spawnedModule.Collider.size;
 
-        foreach (Module module in _spawnedModules)
-            if (bounds.Intersects(module.Collider.bounds))
+            float halfX = size.x * 0.5f;
+            float halfY = size.y * 0.5f;
+            float otherHalfX = otherSize.x * 0.5f;
+            float otherHalfY = otherSize.y * 0.5f;
+
+            if (position.x - halfX < otherPos.x + otherHalfX &&
+                position.x + halfX > otherPos.x - otherHalfX &&
+                position.y - halfY < otherPos.y + otherHalfY &&
+                position.y + halfY > otherPos.y - otherHalfY)
                 return false;
+        }
 
         return true;
     }
@@ -259,16 +280,5 @@ public class MapGenerator : MonoBehaviour
             int j = Random.Range(0, i + 1);
             (list[i], list[j]) = (list[j], list[i]);
         }
-    }
-
-    private List<Door> GetOpenDoors()
-    {
-        List<Door> totalUnconnectedDoors = new();
-
-        foreach (Module module in _spawnedModules)
-            foreach (Door door in module.GetUnconnectedDoors())
-                totalUnconnectedDoors.Add(door);
-
-        return totalUnconnectedDoors;
     }
 }

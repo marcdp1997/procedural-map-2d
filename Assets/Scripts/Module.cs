@@ -23,19 +23,6 @@ public class Module : MonoBehaviour
         return sideDoors;
     }
 
-    public List<Door> GetUnconnectedDoors()
-    {
-        List<Door> unconnectedDoors = new();
-
-        foreach (Door door in _doors)
-        {
-            if (!door.IsEntranceExit && !door.IsConnected)
-                unconnectedDoors.Add(door);
-        }
-
-        return unconnectedDoors;
-    }
-
     public bool HasEntranceExit()
     {
         foreach (Door door in _doors)

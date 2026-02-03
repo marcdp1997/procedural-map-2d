@@ -1,74 +1,67 @@
-# Generación procedural de mapas 2D
+# 2D Procedural Map Generation
 
-Este sistema construye mapas conectando módulos con puertas de forma válida, garantizando conectividad total, una entrada y una salida, y sin puertas abiertas.
+This system builds maps by connecting modules through doors in a valid way, guaranteeing full connectivity, a single entrance and exit, and no open doors.
 
 <p align="center">
   <img src="Gifs/MapGeneration.gif" width="600" />
 </p>
 
-## Creación y configuración de módulos
+## Module creation and configuration
 
-Los módulos son **Prefabs** configurables desde el editor. Cada módulo debe contener:
+Modules are configurable Prefabs set up from the editor. Each module must contain:
 
-1. Un objeto raíz con un *SpriteRenderer* y el componente `Module.cs`.
-2. Tantos objetos hijos como puertas tenga el sprite, colocados en su posición correspondiente y con el componente `Door.cs`.
+1. A root object with a *SpriteRenderer* and the `Module.cs` component.
+2. As many child objects as doors the sprite has, placed in their corresponding positions and each with the `Door.cs` component.
 
-Para agilizar la creación, `Module.cs` incluye un botón en el inspector que configura automáticamente las variables serializadas (collider, lista de puertas y orientación de cada puerta).
+To speed up creation, `Module.cs` includes a button in the inspector that automatically configures the serialized variables (collider, door list, and the orientation of each door).
 
-El sistema **no detecta automáticamente qué puertas son de entrada o salida**, por lo que estas deben marcarse manualmente desde el inspector.
+The system **does not automatically detect which doors are entrances or exits**, so these must be manually marked from the inspector.
 
 <p align="center">
   <img src="Gifs/ModuleCreation.gif" width="600" />
 </p>
 
-## Sistema de seed
+## Seed system
 
-El sistema permite usar una **seed reproducible**, generando con el mismo valor exactamente el mismo mapa.
+The system allows the use of a **reproducible seed**, generating exactly the same map when using the same value.
 
 <p align="center">
   <img src="Gifs/Seed.gif" width="600" />
 </p>
 
-## Cómo generar un mapa
+## How to generate a map
 
-1. Abrir la escena `SampleScene`.
-2. Seleccionar el GameObject `MapGenerator`.
-3. Ajustar los parámetros desde el Inspector.
-4. Pulsar **Generate Map**.
+1. Open the `SampleScene`.
+2. Select the `MapGenerator` GameObject.
+3. Adjust the parameters from the Inspector.
+4. Press **Generate Map**.
 
-Cada generación limpia el mapa anterior antes de crear uno nuevo.
+Each generation clears the previous map before creating a new one.
 
-## Parámetros configurables
+## Configurable parameters
 
-Desde el componente **MapGenerator**:
+From the `MapGenerator` component:
 
-- **Module Library** (`ScriptableObject`): Librería con todos los módulos que el algoritmo puede usar para generar el mapa.
-- **Max Modules** (`int`): Número máximo de módulos a generar.
-- **Use Random Seed**  (`bool`): Si está activado, el mapa se genera de forma aleatoria.
-- **Seed**  (`int`): Si **Use Random Seed** está desactivado, este valor se usará como semilla para la generación del mapa.
-- **Current Seed**  (`int`): Valor de la semilla utilizado en la generación actual. Está público para que se pueda copiar fácilmente.
+- **Module Library** (`ScriptableObject`): Library containing all the modules that the algorithm can use to generate the map.
+- **Max Modules** (`int`): Maximum number of modules to generate.
+- **Use Random Seed**  (`bool`): If enabled, the map is generated randomly.
+- **Seed**  (`int`): If **Use Random Seed** is disabled, this value will be used as the seed for map generation.
+- **Current Seed**  (`int`): Seed value used in the current generation. It is public so it can be easily copied.
 
-## Flujo general del algoritmo
+## General algorithm flow
 
-1. Se instancia un módulo inicial (Entrada).
-2. Se conectan las puertas no conectadas con nuevos módulos.
-3. Para cada puerta:
-   - Se buscan módulos candidatos que tengan puertas compatibles con la orientación de la puerta no conectada.
-   - Se elige un candidato al azar.
-   - Se comprueba que el candidato cumpla los siguientes requisitos:
-     - No colisionar con otros módulos ya generados.
-     - No bloquear la expansión futura del mapa.
-     - Que el número de puertas que genera no obligue a superar el máximo de módulos permitido.
-     - Que no bloquee otras puertas ya creadas para poder conectarse.
-   - Si el candidato no cumple alguno de estos requisitos, se elige otro candidato.
-4. Se repite el paso 2 hasta alcanzar el numero máximo de módulos.
+1. An initial module (Entrance) is instantiated.
+2. Unconnected doors are connected with new modules.
+3. For each door:
+   - Candidate modules that have doors compatible with the orientation of the unconnected door are searched.
+   - A random candidate is chosen.
+   - The candidate is checked to ensure it meets the following requirements:
+     - Does not collide with other already generated modules.
+     - Does not block future map expansion.
+     - The number of doors it generates does not force exceeding the maximum number of allowed modules.
+     - Does not block other already created doors from being connected.
+   - If the candidate does not meet any of these requirements, another candidate is chosen.
+4. Step 2 is repeated until the maximum number of modules is reached.
 
-## Limitaciones
-Si la librería de módulos no contiene módulos de cierre (aquellos con solo una entrada) el algoritmo suele fallar con frecuencia.
-
-## Uso de IA
-
-Se ha utilizado **IA (ChatGPT)** como apoyo para:
-- Simplificación de código
-- Herramientas de editor
-- Documentación
+## Limitations
+If the module library does not contain closing modules (those with only one entrance) and small 1x1 modules, the algorithm tends to fail frequently.
